@@ -1,0 +1,78 @@
+name: Release Pulse
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - name: Build universal app
+        env:
+          PULSE_UNIVERSAL: '1'
+        run: ./scripts/build.sh
+
+      - name: Package and verify download
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          archive="Pulse-${GITHUB_REF_NAME}-macOS-universal.zip"
+          ditto -c -k --keepParent Pulse.app "$archive"
+          shasum -a 256 "$archive" > "$archive.sha256"
+          shasum -a 256 -c "$archive.sha256"
+
+          unpack="$(mktemp -d)"
+          trap 'rm -rf -- "$unpack"' EXIT
+          ditto -x -k "$archive" "$unpack"
+          app="$unpack/Pulse.app"
+          codesign --verify --strict --deep "$app"
+          xcrun lipo "$app/Contents/MacOS/Pulse" -verify_arch arm64 x86_64
+          test ! -e "$app/Contents/Helpers"
+          test -f "$app/Contents/Resources/Pulse.icns"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "local.codex.token-tracker"
+
+      - name: Publish verified release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="Pulse-${GITHUB_REF_NAME}-macOS-universal.zip"
+          notes="$(mktemp)"
+          trap 'rm -f -- "$notes"' EXIT
+          cat > "$notes" <<'EOF'
+          ## Download
+          Extract the universal ZIP and move Pulse.app to Applications. Requires macOS 15 or later and supports Apple silicon and Intel Macs.
+
+          The app is built and packaged on a GitHub-hosted macOS runner. The download includes an ad-hoc signature and is not notarized by Apple. Gatekeeper may block the first launch.
+
+          Pulse uses its own Swift readers and communicates with the installed provider tools. No separate usage tracker is bundled or required.
+          EOF
+          gh release create "$GITHUB_REF_NAME" "dist/$archive" "dist/$archive.sha256" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Pulse $GITHUB_REF_NAME" --notes-file "$notes"
