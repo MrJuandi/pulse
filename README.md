@@ -6,7 +6,7 @@ Pulse is a native macOS menu bar tracker for Codex, Claude Code, and Gemini in A
 
 Download the universal ZIP from [GitHub Releases](https://github.com/MrJuandi/pulse/releases/latest), extract it, and move Pulse to Applications. The app supports Apple silicon and Intel Macs running macOS 15 or later.
 
-Release builds run on GitHub-hosted macOS runners. They are ad-hoc signed and are not notarized by Apple, so Gatekeeper may block the first launch.
+Release builds run on GitHub-hosted macOS runners. The project does not currently have an Apple Developer Program membership, so releases are ad hoc signed and are not notarized by Apple. macOS Gatekeeper may block the first launch.
 
 ## Build from source
 
