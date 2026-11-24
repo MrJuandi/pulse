@@ -2,6 +2,10 @@
 
 Pulse is a native macOS menu bar tracker for Codex, Claude Code, and Gemini in Antigravity. The menu bar shows the percentage remaining in each provider's tightest active quota window. Open the popover to see a combined daily token chart or choose a provider for its individual history, quotas, and models.
 
+![Pulse popover with the daily token chart and quota meters](docs/pulse.jpg)
+
+*Usage figures are demo data.* [Case study and demo](https://juandiegodiaz.vercel.app/work/pulse)
+
 ## Download
 
 Download the universal ZIP from [GitHub Releases](https://github.com/MrJuandi/pulse/releases/latest), extract it, and move Pulse to Applications. The app supports Apple silicon and Intel Macs running macOS 15 or later.
